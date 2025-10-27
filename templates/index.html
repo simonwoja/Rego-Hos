@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Diabetes Prediction App</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet">
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand" href="/">
+                <i class="fas fa-heartbeat me-2"></i>
+                Diabetes Prediction App - Rego Medical Complex
+            </a>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="container mt-5">
+        <div class="row justify-content-center">
+            <div class="col-lg-10">
+                <!-- Header -->
+                <div class="text-center mb-5">
+                    <h1 class="display-4 text-primary mb-3">
+                        <i class="fas fa-stethoscope me-3"></i>
+                        Diabetes Risk Assessment
+                    </h1>
+                    <p class="lead text-muted">
+                        Enter your medical information below to assess your risk of diabetes
+                    </p>
+                </div>
+
+                <!-- Prediction Form -->
+                <div class="card shadow-lg">
+                    <div class="card-header bg-light">
+                        <h4 class="mb-0">
+                            <i class="fas fa-clipboard-list me-2"></i>
+                            Medical Information Form
+                        </h4>
+                    </div>
+                    <div class="card-body">
+                        <form id="predictionForm" action="/predict" method="POST">
+                            <div class="row">
+                                <!-- Column 1 -->
+                                <div class="col-md-6">
+                                    <!-- Pregnancies -->
+                                    <div class="mb-3">
+                                        <label for="Pregnancies" class="form-label">
+                                            <i class="fas fa-baby me-2"></i>
+                                            Number of Pregnancies
+                                        </label>
+                                        <input type="number" class="form-control" id="Pregnancies" name="Pregnancies" 
+                                               min="0" max="20" step="1" required>
+                                        <div class="form-text">Number of times pregnant</div>
+                                    </div>
+
+                                    <!-- Glucose -->
+                                    <div class="mb-3">
+                                        <label for="Glucose" class="form-label">
+                                            <i class="fas fa-tint me-2"></i>
+                                            Glucose Level
+                                        </label>
+                                        <input type="number" class="form-control" id="Glucose" name="Glucose" 
+                                               min="0" max="200" step="1" required>
+                                        <div class="form-text">Plasma glucose concentration (mg/dL)</div>
+                                    </div>
+
+                                    <!-- Blood Pressure -->
+                                    <div class="mb-3">
+                                        <label for="BloodPressure" class="form-label">
+                                            <i class="fas fa-heartbeat me-2"></i>
+                                            Blood Pressure
+                                        </label>
+                                        <input type="number" class="form-control" id="BloodPressure" name="BloodPressure" 
+                                               min="0" max="122" step="1" required>
+                                        <div class="form-text">Diastolic blood pressure (mm Hg)</div>
+                                    </div>
+
+                                    <!-- Skin Thickness -->
+                                    <div class="mb-3">
+                                        <label for="SkinThickness" class="form-label">
+                                            <i class="fas fa-ruler-vertical me-2"></i>
+                                            Skin Thickness
+                                        </label>
+                                        <input type="number" class="form-control" id="SkinThickness" name="SkinThickness" 
+                                               min="0" max="99" step="1" required>
+                                        <div class="form-text">Triceps skin fold thickness (mm)</div>
+                                    </div>
+                                </div>
+
+                                <!-- Column 2 -->
+                                <div class="col-md-6">
+                                    <!-- Insulin -->
+                                    <div class="mb-3">
+                                        <label for="Insulin" class="form-label">
+                                            <i class="fas fa-syringe me-2"></i>
+                                            Insulin Level
+                                        </label>
+                                        <input type="number" class="form-control" id="Insulin" name="Insulin" 
+                                               min="0" max="846" step="1" required>
+                                        <div class="form-text">2-Hour serum insulin (mu U/ml)</div>
+                                    </div>
+
+                                    <!-- BMI -->
+                                    <div class="mb-3">
+                                        <label for="BMI" class="form-label">
+                                            <i class="fas fa-weight me-2"></i>
+                                            BMI (Body Mass Index)
+                                        </label>
+                                        <input type="number" class="form-control" id="BMI" name="BMI" 
+                                               min="0" max="67.1" step="0.1" required>
+                                        <div class="form-text">Body mass index (weight in kg/(height in m)²)</div>
+                                    </div>
+
+                                    <!-- Diabetes Pedigree Function -->
+                                    <div class="mb-3">
+                                        <label for="DiabetesPedigreeFunction" class="form-label">
+                                            <i class="fas fa-dna me-2"></i>
+                                            Diabetes Pedigree Function
+                                        </label>
+                                        <input type="number" class="form-control" id="DiabetesPedigreeFunction" 
+                                               name="DiabetesPedigreeFunction" min="0" max="2.42" step="0.001" required>
+                                        <div class="form-text">Diabetes pedigree function (genetic influence)</div>
+                                    </div>
+
+                                    <!-- Age -->
+                                    <div class="mb-3">
+                                        <label for="Age" class="form-label">
+                                            <i class="fas fa-birthday-cake me-2"></i>
+                                            Age
+                                        </label>
+                                        <input type="number" class="form-control" id="Age" name="Age" 
+                                               min="21" max="81" step="1" required>
+                                        <div class="form-text">Age in years</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Submit Button -->
+                            <div class="text-center mt-4">
+                                <button type="submit" class="btn btn-primary btn-lg">
+                                    <i class="fas fa-calculator me-2"></i>
+                                    Predict Diabetes Risk
+                                </button>
+                                <button type="reset" class="btn btn-outline-secondary btn-lg ms-2">
+                                    <i class="fas fa-redo me-2"></i>
+                                    Reset Form
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Information Section -->
+                <div class="card mt-4">
+                    <div class="card-body">
+                        <h5>
+                            <i class="fas fa-info-circle me-2 text-info"></i>
+                            About This Assessment
+                        </h5>
+                        <p class="mb-0">
+                            This diabetes prediction tool uses machine learning to assess your risk based on 
+                            medical parameters. The model was trained on the Pima Indians Diabetes Dataset 
+                            and can provide insights into potential diabetes risk. 
+                            <strong>This is not a medical diagnosis - please consult healthcare professionals for medical advice.</strong>
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-dark text-light mt-5 py-4">
+        <div class="container text-center">
+            <p class="mb-0">
+                &copy; 2024 Diabetes Prediction App | Machine Learning Project | 
+                <i class="fas fa-shield-alt me-1"></i>
+                For Educational Purposes
+            </p>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+</body>
+</html>
