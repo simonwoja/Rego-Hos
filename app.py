@@ -1,5 +1,3 @@
-
-
 from flask import Flask, render_template, request, jsonify
 import pandas as pd
 import numpy as np
@@ -7,39 +5,25 @@ import pickle
 import os
 import traceback
 
-
-    # Add this after your imports in app.py
-import os
-print("🔍 Checking for model files...")
-print("Current directory:", os.getcwd())
-print("Files in directory:", os.listdir('.'))
-
-model_path = 'random_forest_model.pkl'
-scaler_path = 'scaler.pkl'
-
-print(f"Model file exists: {os.path.exists(model_path)}")
-print(f"Scaler file exists: {os.path.exists(scaler_path)}")
-
-
-
 # Initialize Flask app
 app = Flask(__name__)
 
 # Load the trained model and scaler
 def load_model():
-    """Load the trained model and scaler from the script directory"""
+    """Load the trained model and scaler"""
     try:
-        base_dir = os.path.dirname(os.path.abspath(__file__))
-        model_path = os.path.join(base_dir, 'random_forest_model.pkl')
-        scaler_path = os.path.join(base_dir, 'scaler.pkl')
+        # In Render, files are in the same directory
+        model_path = 'random_forest_model.pkl'
+        scaler_path = 'scaler.pkl'
 
         print(f"🔍 Looking for model at: {model_path}")
         print(f"🔍 Looking for scaler at: {scaler_path}")
         
+        # List all files for debugging
+        print("📁 Files in directory:", os.listdir('.'))
+        
         if not os.path.exists(model_path):
             print(f"❌ Model file not found at: {model_path}")
-            # List files to help debug
-            print("📁 Files in directory:", [f for f in os.listdir(base_dir) if f.endswith('.pkl')])
             return None, None
             
         if not os.path.exists(scaler_path):
@@ -48,27 +32,20 @@ def load_model():
 
         print("✅ Model and scaler files found. Loading...")
         
-        # Try to load model
+        # Load model
         with open(model_path, 'rb') as file:
             model = pickle.load(file)
         print(f"✅ Model loaded. Type: {type(model)}")
         
-        # Try to load scaler
+        # Load scaler
         with open(scaler_path, 'rb') as file:
             scaler = pickle.load(file)
         print(f"✅ Scaler loaded. Type: {type(scaler)}")
         
-        # Test if model has predict method
-        if hasattr(model, 'predict'):
-            print("✅ Model has predict method")
-        else:
-            print("❌ Model doesn't have predict method!")
-            
         return model, scaler
         
     except Exception as e:
         print(f"❌ Error loading model: {e}")
-        print("Full traceback:")
         traceback.print_exc()
         return None, None
 
@@ -82,7 +59,7 @@ FEATURE_NAMES = [
 ]
 
 def _safe_float(value, default=0.0):
-    """Convert value to float safely (handles None, empty strings, invalid input)."""
+    """Convert value to float safely"""
     try:
         if value is None:
             return default
@@ -99,21 +76,19 @@ def home():
 
 @app.route('/predict', methods=['POST'])
 def predict():
-    """Handle prediction requests from the web form"""
+    """Handle prediction requests"""
     try:
         if not model or not scaler:
             raise RuntimeError("Model or scaler not loaded on server.")
 
         data = request.form.to_dict()
-
-        # Convert to numerical values safely
         input_data = [_safe_float(data.get(feature, 0)) for feature in FEATURE_NAMES]
 
         # Create DataFrame and scale
         input_df = pd.DataFrame([input_data], columns=FEATURE_NAMES)
         input_scaled = scaler.transform(input_df)
 
-        # Predict (handle models without predict_proba)
+        # Predict
         prediction = model.predict(input_scaled)[0]
         if hasattr(model, "predict_proba"):
             probability = model.predict_proba(input_scaled)[0]
@@ -121,7 +96,6 @@ def predict():
             diabetes_prob = probability[1] * 100
             confidence = float(max(probability))
         else:
-            # fallback deterministic confidence
             if prediction == 1:
                 no_diabetes_prob, diabetes_prob = 0.0, 100.0
                 confidence = 1.0
@@ -129,7 +103,7 @@ def predict():
                 no_diabetes_prob, diabetes_prob = 100.0, 0.0
                 confidence = 1.0
 
-        # Determine result and color
+        # Determine result
         if prediction == 1:
             result = "DIABETES"
             color = "danger"
@@ -160,13 +134,12 @@ def predict():
 
 @app.route('/api/predict', methods=['POST'])
 def api_predict():
-    """API endpoint for predictions (for potential mobile app integration)"""
+    """API endpoint for predictions"""
     try:
         if not model or not scaler:
             return jsonify({'error': 'Model or scaler not loaded on server.'}), 503
 
         data = request.get_json() or {}
-
         input_data = [_safe_float(data.get(feature, 0)) for feature in FEATURE_NAMES]
         input_df = pd.DataFrame([input_data], columns=FEATURE_NAMES)
         input_scaled = scaler.transform(input_df)
@@ -200,10 +173,4 @@ def health_check():
     else:
         return jsonify({'status': 'unhealthy', 'model_loaded': False}), 500
 
-if __name__ == '__main__':
-    print("🚀 Starting Diabetes Prediction Web Application...")
-    print("📊 Model Status:", "Loaded" if model else "Not Loaded")
-    print("🌐 Web App will be available at: http://localhost:5000")
-    app.run(debug=True, host='0.0.0.0', port=5000)
-
-
+# Remove the debug server startup for production
