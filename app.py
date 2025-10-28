@@ -1,258 +1,207 @@
-import os
-import pickle
-import numpy as np
 from flask import Flask, render_template, request, jsonify
+import pandas as pd
+import numpy as np
+import pickle
+import os
 import traceback
 
+# Add this after your imports in app.py
+import os
+print("🔍 Checking for model files...")
+print("Current directory:", os.getcwd())
+print("Files in directory:", os.listdir('.'))
+
+model_path = 'random_forest_model.pkl'
+scaler_path = 'scaler.pkl'
+
+print(f"Model file exists: {os.path.exists(model_path)}")
+print(f"Scaler file exists: {os.path.exists(scaler_path)}")
+
+# Initialize Flask app
 app = Flask(__name__)
 
-# Initialize model and scaler
-model = None
-scaler = None
-
-def load_artifacts():
-    global model, scaler
+# Load the trained model and scaler
+def load_model():
+    """Load the trained model and scaler from the script directory"""
     try:
-        print("🔍 Looking for model and scaler files...")
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        model_path = os.path.join(base_dir, 'random_forest_model.pkl')
+        scaler_path = os.path.join(base_dir, 'scaler.pkl')
+
+        print(f"🔍 Looking for model at: {model_path}")
+        print(f"🔍 Looking for scaler at: {scaler_path}")
         
-        # List all files for debugging
-        print(f"📁 Files in current directory: {os.listdir('.')}")
-        
-        # Check if templates directory exists
-        if os.path.exists('templates'):
-            print(f"📁 Files in templates directory: {os.listdir('templates')}")
-        else:
-            print("❌ Templates directory not found!")
-        
-        # Try different possible file locations
-        possible_model_paths = [
-            'random_forest_model.pkl',
-            'diabetes_model.pkl',
-            'models/random_forest_model.pkl',
-            'models/diabetes_model.pkl'
-        ]
-        
-        possible_scaler_paths = [
-            'scaler.pkl',
-            'models/scaler.pkl'
-        ]
-        
-        model_path = None
-        scaler_path = None
-        
-        for path in possible_model_paths:
-            if os.path.exists(path):
-                model_path = path
-                print(f"✅ Found model at: {path}")
-                break
-                
-        for path in possible_scaler_paths:
-            if os.path.exists(path):
-                scaler_path = path
-                print(f"✅ Found scaler at: {path}")
-                break
-        
-        if not model_path:
-            print("❌ Model file not found in any location")
-            return False
+        if not os.path.exists(model_path):
+            print(f"❌ Model file not found at: {model_path}")
+            # List files to help debug
+            print("📁 Files in directory:", [f for f in os.listdir(base_dir) if f.endswith('.pkl')])
+            return None, None
             
-        if not scaler_path:
-            print("❌ Scaler file not found in any location")
-            return False
+        if not os.path.exists(scaler_path):
+            print(f"❌ Scaler file not found at: {scaler_path}")
+            return None, None
+
+        print("✅ Model and scaler files found. Loading...")
         
-        # Load model
-        print("📦 Loading model...")
+        # Try to load model
         with open(model_path, 'rb') as file:
             model = pickle.load(file)
+        print(f"✅ Model loaded. Type: {type(model)}")
         
-        # Load scaler
-        print("📦 Loading scaler...")
+        # Try to load scaler
         with open(scaler_path, 'rb') as file:
             scaler = pickle.load(file)
+        print(f"✅ Scaler loaded. Type: {type(scaler)}")
+        
+        # Test if model has predict method
+        if hasattr(model, 'predict'):
+            print("✅ Model has predict method")
+        else:
+            print("❌ Model doesn't have predict method!")
             
-        print("✅ Model and scaler loaded successfully!")
-        return True
+        return model, scaler
         
     except Exception as e:
-        print(f"❌ Error loading artifacts: {e}")
+        print(f"❌ Error loading model: {e}")
         print("Full traceback:")
         traceback.print_exc()
-        return False
+        return None, None
 
-def create_basic_templates():
-    """Create basic templates if they don't exist"""
-    templates_dir = 'templates'
-    if not os.path.exists(templates_dir):
-        os.makedirs(templates_dir)
-        print("✅ Created templates directory")
-    
-    # Create basic index.html if it doesn't exist
-    index_html = """<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Diabetes Prediction</title>
-    <style>
-        body { font-family: Arial, sans-serif; max-width: 600px; margin: 50px auto; padding: 20px; }
-        .container { background: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-        .form-group { margin: 15px 0; }
-        label { display: block; margin-bottom: 5px; font-weight: bold; }
-        input { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px; }
-        button { background: #2196F3; color: white; padding: 12px 24px; border: none; border-radius: 5px; cursor: pointer; }
-        button:hover { background: #1976D2; }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <h1>Diabetes Prediction</h1>
-        <form action="/predict" method="POST">
-            <div class="form-group">
-                <label>Pregnancies:</label>
-                <input type="number" name="Pregnancies" required>
-            </div>
-            <div class="form-group">
-                <label>Glucose:</label>
-                <input type="number" name="Glucose" required>
-            </div>
-            <div class="form-group">
-                <label>Blood Pressure:</label>
-                <input type="number" name="BloodPressure" required>
-            </div>
-            <div class="form-group">
-                <label>Skin Thickness:</label>
-                <input type="number" name="SkinThickness" required>
-            </div>
-            <div class="form-group">
-                <label>Insulin:</label>
-                <input type="number" name="Insulin" required>
-            </div>
-            <div class="form-group">
-                <label>BMI:</label>
-                <input type="number" step="0.1" name="BMI" required>
-            </div>
-            <div class="form-group">
-                <label>Diabetes Pedigree Function:</label>
-                <input type="number" step="0.001" name="DiabetesPedigreeFunction" required>
-            </div>
-            <div class="form-group">
-                <label>Age:</label>
-                <input type="number" name="Age" required>
-            </div>
-            <button type="submit">Predict</button>
-        </form>
-        <p><a href="/health">Health Check</a> | <a href="/debug">Debug Info</a></p>
-    </div>
-</body>
-</html>"""
-    
-    with open(os.path.join(templates_dir, 'index.html'), 'w') as f:
-        f.write(index_html)
-    print("✅ Created basic index.html")
+# Load model at startup
+model, scaler = load_model()
 
-# Initialize app
-print("🚀 Starting Diabetes Prediction App...")
-create_basic_templates()
-load_artifacts()
+# Feature names (must match training data)
+FEATURE_NAMES = [
+    'Pregnancies', 'Glucose', 'BloodPressure', 'SkinThickness',
+    'Insulin', 'BMI', 'DiabetesPedigreeFunction', 'Age'
+]
+
+def _safe_float(value, default=0.0):
+    """Convert value to float safely (handles None, empty strings, invalid input)."""
+    try:
+        if value is None:
+            return default
+        if isinstance(value, str) and value.strip() == "":
+            return default
+        return float(value)
+    except Exception:
+        return default
 
 @app.route('/')
 def home():
-    try:
-        return render_template('index.html')
-    except Exception as e:
-        return f"""
-        <html>
-            <head><title>Diabetes Prediction</title></head>
-            <body>
-                <h1>Diabetes Prediction App</h1>
-                <p>Application is running!</p>
-                <p><a href="/health">Health Status</a> | <a href="/debug">Debug Info</a></p>
-                <p>Note: The main interface is being loaded...</p>
-            </body>
-        </html>
-        """
+    """Render the home page with input form"""
+    return render_template('index.html')
 
 @app.route('/predict', methods=['POST'])
 def predict():
+    """Handle prediction requests from the web form"""
     try:
-        if model is None or scaler is None:
-            return jsonify({
-                'error': 'Model not loaded', 
-                'status': 'unhealthy'
-            }), 503
-        
-        # Get form data
-        data = [float(x) for x in request.form.values()]
-        final_features = [np.array(data)]
-        
-        # Scale features and predict
-        scaled_features = scaler.transform(final_features)
-        prediction = model.predict(scaled_features)
-        
-        output = "Diabetic" if prediction[0] == 1 else "Non-Diabetic"
-        
-        # Try to render result template, fallback to JSON
-        try:
-            return render_template('result.html', prediction_text=output)
-        except:
-            return jsonify({'prediction': output})
-        
+        if not model or not scaler:
+            raise RuntimeError("Model or scaler not loaded on server.")
+
+        data = request.form.to_dict()
+
+        # Convert to numerical values safely
+        input_data = [_safe_float(data.get(feature, 0)) for feature in FEATURE_NAMES]
+
+        # Create DataFrame and scale
+        input_df = pd.DataFrame([input_data], columns=FEATURE_NAMES)
+        input_scaled = scaler.transform(input_df)
+
+        # Predict (handle models without predict_proba)
+        prediction = model.predict(input_scaled)[0]
+        if hasattr(model, "predict_proba"):
+            probability = model.predict_proba(input_scaled)[0]
+            no_diabetes_prob = probability[0] * 100
+            diabetes_prob = probability[1] * 100
+            confidence = float(max(probability))
+        else:
+            # fallback deterministic confidence
+            if prediction == 1:
+                no_diabetes_prob, diabetes_prob = 0.0, 100.0
+                confidence = 1.0
+            else:
+                no_diabetes_prob, diabetes_prob = 100.0, 0.0
+                confidence = 1.0
+
+        # Determine result and color
+        if prediction == 1:
+            result = "DIABETES"
+            color = "danger"
+            recommendation = "Please consult with a healthcare professional for further evaluation and management."
+        else:
+            result = "NO DIABETES"
+            color = "success"
+            recommendation = "Maintain a healthy lifestyle with regular exercise and balanced diet."
+
+        response_data = {
+            'prediction': result,
+            'color': color,
+            'confidence': round(confidence * 100, 2),
+            'no_diabetes_prob': round(no_diabetes_prob, 2),
+            'diabetes_prob': round(diabetes_prob, 2),
+            'recommendation': recommendation,
+            'input_values': {FEATURE_NAMES[i]: input_data[i] for i in range(len(FEATURE_NAMES))}
+        }
+
+        return render_template('result.html', **response_data)
+
     except Exception as e:
-        error_msg = f"Prediction error: {str(e)}"
-        print(f"❌ {error_msg}")
-        
-        # Try to render error template, fallback to JSON
-        try:
-            return render_template('error.html', error=error_msg), 500
-        except:
-            return jsonify({'error': error_msg}), 500
+        error_message = f"Error processing request: {str(e)}"
+        return render_template('result.html',
+                               prediction="ERROR",
+                               color="warning",
+                               error=error_message)
+
+@app.route('/api/predict', methods=['POST'])
+def api_predict():
+    """API endpoint for predictions (for potential mobile app integration)"""
+    try:
+        if not model or not scaler:
+            return jsonify({'error': 'Model or scaler not loaded on server.'}), 503
+
+        data = request.get_json() or {}
+
+        input_data = [_safe_float(data.get(feature, 0)) for feature in FEATURE_NAMES]
+        input_df = pd.DataFrame([input_data], columns=FEATURE_NAMES)
+        input_scaled = scaler.transform(input_df)
+
+        prediction = model.predict(input_scaled)[0]
+        if hasattr(model, "predict_proba"):
+            probability = model.predict_proba(input_scaled)[0]
+            no_p, yes_p = float(probability[0]), float(probability[1])
+            confidence = float(max(probability))
+        else:
+            no_p, yes_p = (1.0, 0.0) if prediction == 0 else (0.0, 1.0)
+            confidence = max(no_p, yes_p)
+
+        return jsonify({
+            'prediction': int(prediction),
+            'probabilities': {
+                'no_diabetes': no_p,
+                'diabetes': yes_p
+            },
+            'confidence': confidence
+        })
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 400
 
 @app.route('/health')
-def health():
+def health_check():
     """Health check endpoint"""
-    status = {
-        'model_loaded': model is not None,
-        'scaler_loaded': scaler is not None,
-        'status': 'healthy' if (model is not None and scaler is not None) else 'unhealthy',
-        'service': 'running'
-    }
-    return jsonify(status)
+    if model and scaler:
+        return jsonify({'status': 'healthy', 'model_loaded': True})
+    else:
+        return jsonify({'status': 'unhealthy', 'model_loaded': False}), 500
 
-@app.route('/debug')
-def debug():
-    """Debug endpoint to check files and status"""
-    current_dir = os.getcwd()
-    files = os.listdir('.')
+# Remove the debug server and use production-ready server
+if __name__ == '__main__':
+    print("🚀 Starting Diabetes Prediction Web Application...")
+    print("📊 Model Status:", "Loaded" if model else "Not Loaded")
     
-    debug_info = {
-        'current_directory': current_dir,
-        'files_in_root': files,
-        'model_loaded': model is not None,
-        'scaler_loaded': scaler is not None,
-        'templates_directory_exists': os.path.exists('templates'),
-        'model_files_exist': any(f.endswith('.pkl') for f in files)
-    }
+    # Get port from environment variable (Render sets this)
+    port = int(os.environ.get('PORT', 5000))
     
-    if os.path.exists('templates'):
-        debug_info['template_files'] = os.listdir('templates')
-    
-    # Check for specific model files
-    debug_info['random_forest_model_exists'] = os.path.exists('random_forest_model.pkl')
-    debug_info['diabetes_model_exists'] = os.path.exists('diabetes_model.pkl')
-    debug_info['scaler_exists'] = os.path.exists('scaler.pkl')
-    
-    return jsonify(debug_info)
-
-@app.route('/check-models')
-def check_models():
-    """Check specifically for model files"""
-    model_files = {
-        'random_forest_model.pkl': os.path.exists('random_forest_model.pkl'),
-        'diabetes_model.pkl': os.path.exists('diabetes_model.pkl'),
-        'scaler.pkl': os.path.exists('scaler.pkl'),
-        'all_files': os.listdir('.')
-    }
-    return jsonify(model_files)
-
-if __name__ == "__main__":
-    app.run(debug=False, host='0.0.0.0', port=5000)
+    # Run with production settings - no debug mode
+    app.run(host='0.0.0.0', port=port, debug=False)
